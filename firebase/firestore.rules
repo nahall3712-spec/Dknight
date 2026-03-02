@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuthed() {
+      return request.auth != null;
+    }
+
+    function isParticipant(eventId) {
+      return exists(/databases/$(database)/documents/events/$(eventId)/participants/$(request.auth.uid));
+    }
+
+    function isCreatorOrAdmin(eventId) {
+      let eventDoc = get(/databases/$(database)/documents/events/$(eventId));
+      return eventDoc.data.creatorId == request.auth.uid
+        || request.auth.uid in eventDoc.data.adminIds;
+    }
+
+    match /events/{eventId} {
+      allow read: if isAuthed() && isParticipant(eventId);
+      allow create: if isAuthed();
+      allow update, delete: if isAuthed() && isCreatorOrAdmin(eventId);
+
+      match /markets/{marketId} {
+        allow read: if isAuthed() && isParticipant(eventId);
+        allow write: if isAuthed() && isCreatorOrAdmin(eventId);
+      }
+
+      match /bets/{betId} {
+        allow read: if isAuthed() && isParticipant(eventId);
+        allow create, update: if isAuthed()
+          && isParticipant(eventId)
+          && request.resource.data.participantId == request.auth.uid
+          && request.time < request.resource.data.lockTime;
+      }
+
+      match /chatMessages/{chatMessageId} {
+        allow read: if isAuthed() && isParticipant(eventId);
+        allow create: if isAuthed() && isParticipant(eventId);
+        allow update, delete: if isAuthed() && isCreatorOrAdmin(eventId);
+      }
+    }
+  }
+}

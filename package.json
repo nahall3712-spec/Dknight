@@ -1,0 +1,12 @@
+{
+  "name": "wager-with-friends",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "functions"
+  ],
+  "scripts": {
+    "build": "npm run -w functions build",
+    "test": "npm run -w functions test"
+  }
+}
